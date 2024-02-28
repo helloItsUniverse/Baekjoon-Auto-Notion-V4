@@ -477,11 +477,12 @@ with col2:
             if not str(input_database_id):
                 con.text('database does not exist!')
                 response_database = create_database(json_input(refactor_page_id(input_parent_page_id)), input_notion_secret)
+                response_database_id = response_database.json()['id']
                 
                 submit_info = get_code(input_code_share_link)
                 problem_info = get_problem(submit_info[0])
                 GPT_comments = code_comments("\n".join(submit_info[2]))
-                response_page = create_page(create_properties(problem_info, submit_info), input_database_id)
+                response_page = create_page(create_properties(problem_info, submit_info), response_database_id)
                 page_block_id = response_page.json()["id"]
                 blocks = create_blocks(problem_info, submit_info, GPT_comments)
                 edit_page(page_block_id, blocks)
