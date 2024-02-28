@@ -103,22 +103,21 @@ def create_database(data: dict, notion_token):
     
     response = requests.post(create_url, headers=headers, json=payload)
     if response.status_code == 200:
-        # print(f"{response.status_code}: Database created successfully\n")
+        print(f"{response.status_code}: Database created successfully\n")
         con.text(f"{response.status_code}: Database created successfully")
     else:
-        # print(f"{response.status_code}: Error during database creation")
+        print(f"{response.status_code}: Error during database creation")
         con.text(f"{response.status_code}: Error during database creation")
         
     response_database_id = response.json()["id"]
-    file_path = 'database_id.txt'
-    try:
-        with open(file_path, 'w') as f:
-            f.truncate()
-            f.write(response_database_id)
-    except IOError:
-        # print('\nFile open failure!\n')
-        con.text('File open failure!')
-    # return response
+    # file_path = 'database_id.txt'
+    # try:
+    #     with open(file_path, 'w') as f:
+    #         f.truncate()
+    #         f.write(response_database_id)
+    # except IOError:
+    #     print('\nFile open failure!\n')
+    return response
 
 # ======================================================================
 # crawling resources
@@ -135,8 +134,7 @@ def code_comments(param):
             temperature=0.4
         )
     except:
-        # print("OpenAI API Error!")
-        con.text('OpenAI API Error!')
+        print("OpenAI API Error!")
         return
     return response['choices'][0]['message']['content']
 
@@ -148,8 +146,7 @@ def get_problem(prob_n):
     try:
         response = requests.get(url, headers=headers, params=querystring)
     except:
-        # print("Solved.ac API ERROR!")
-        con.text('Solved.ac API ERROR!')
+        print("Solved.ac API ERROR!")
         return
     data = response.json()
     problemId = data['problemId']
@@ -292,7 +289,7 @@ def create_attr_tier(tier_num):
 
 
 # (request.post) create empty page with preset
-def create_page(data: dict):
+def create_page(data, DATABASE_ID):
     properties = data[0]
     icon = data[1]
     create_url = "https://api.notion.com/v1/pages"
@@ -300,10 +297,10 @@ def create_page(data: dict):
     
     res = requests.post(create_url, headers=headers, json=payload)
     if res.status_code == 200:
-        # print(f"{res.status_code}: Page created successfully")
+        print(f"{res.status_code}: Page created successfully")
         con.text(f"{res.status_code}: Page created successfully")
     else:
-        # print(f"{res.status_code}: Error during page creation")
+        print(f"{res.status_code}: Error during page creation")
         con.text(f"{res.status_code}: Error during page creation")
     return res
 
@@ -415,10 +412,10 @@ def edit_page(page_block_id, data: dict):
     payload = data
     res = requests.patch(edit_url, headers=headers, json=payload)
     if res.status_code == 200:
-        # print(f"{res.status_code}: Page edited successfully")
+        print(f"{res.status_code}: Page edited successfully")
         con.text(f"{res.status_code}: Page edited successfully")
     else:
-        # print(f"{res.status_code}: Error during page editing")
+        print(f"{res.status_code}: Error during page editing")
         con.text(f"{res.status_code}: Error during page editing")
     return res
 
@@ -436,9 +433,10 @@ col1, col2 = st.columns(2)
 
 with col1:
     input_parent_page_id = st.text_input(label='# 1. Please input your Parent Page ID', value="")
-    input_openai_key = st.text_input(label='# 2. Please input your OpenAI key', type='password', value="")
-    input_notion_secret = st.text_input(label='# 3. Please input your Notion API Secret Key', type='password', value="")
-    input_code_share_link = st.text_input(label="# 4. BOJ Source Code Share Link", value="")
+    input_database_id = st.text_input(label='# 2. (Auto-generate) Your Database ID', value="")
+    input_openai_key = st.text_input(label='# 3. Please input your OpenAI key', type='password', value="")
+    input_notion_secret = st.text_input(label='# 4. Please input your Notion API Secret Key', type='password', value="")
+    input_code_share_link = st.text_input(label="# 5. BOJ Source Code Share Link", value="")
     
     btn_clicked = st.button("Submit to Notion")
 
@@ -458,7 +456,7 @@ headers_user_agent = {
     'User-Agent': user_agent
 }
 
-
+openai.api_key = input_openai_key
 
 with col2:
 
@@ -476,48 +474,41 @@ with col2:
             #     Your Notion Secret Key is: {str(input_notion_secret)}  \n\
             #     Your BOJ Share Code Link is: {str(input_code_share_link)}  \n")
             
-            try:
-                path = 'database_id.txt'
-                with open(path, 'r') as f:
-                    line = f.readline()
-                # print('\ndatabase already exists!')
-                con.text('database already exists!  \n')
-                # print('\nreading database properties ...')
-                # print('\ncreating new page row ...\n')
-        
-            except:
-                # print('\ndatabase does not exist!')
+            if not str(input_database_id):
                 con.text('database does not exist!')
-                # print('\ncreating database ...\n')
-                con.text('creating database ...')
+                response_database = create_database(json_input(refactor_page_id(input_parent_page_id)), input_notion_secret)
                 
-                create_database(json_input(refactor_page_id(input_parent_page_id)), input_notion_secret)
+                submit_info = get_code(input_code_share_link)
+                problem_info = get_problem(submit_info[0])
+                GPT_comments = code_comments("\n".join(submit_info[2]))
+                response_page = create_page(create_properties(problem_info, submit_info), input_database_id)
+                page_block_id = response_page.json()["id"]
+                blocks = create_blocks(problem_info, submit_info, GPT_comments)
+                edit_page(page_block_id, blocks)
+            
+            else:
+                con.text('database already exists!  \n')
                 
-                path = 'database_id.txt'
-                with open(path, 'r') as f:
-                    line = f.readline()
-            DATABASE_ID = line
-            submit_info = get_code(input_code_share_link)
-            problem_info = get_problem(submit_info[0])
-            openai.api_key = input_openai_key
-            GPT_comments = code_comments("\n".join(submit_info[2]))
-            # create empty page row
+                submit_info = get_code(input_code_share_link)
+                problem_info = get_problem(submit_info[0])
+                GPT_comments = code_comments("\n".join(submit_info[2]))
+                response_page = create_page(create_properties(problem_info, submit_info), input_database_id)
+                page_block_id = response_page.json()["id"]
+                blocks = create_blocks(problem_info, submit_info, GPT_comments)
+                edit_page(page_block_id, blocks)
             
-            # print('\nreading database properties ...')
-            con.text('reading database properties ...')
-            # print('\ncreating new page row ...\n')
-            con.text('creating new page row ...')
-            response = create_page(create_properties(problem_info, submit_info))
-
-            # get page block id
-            page_block_id = response.json()["id"]
-
-            # fill the page with blocks(using block id)
-            blocks = create_blocks(problem_info, submit_info, GPT_comments)
-            edit_page(page_block_id, blocks)
             
-                
             
-        
-        
+            
+            # # print('\nreading database properties ...')
+            # con.text('reading database properties ...')
+            # # print('\ncreating new page row ...\n')
+            # con.text('creating new page row ...')
+            # response = create_page(create_properties(problem_info, submit_info), input_database_id)
 
+            # # get page block id
+            # page_block_id = response.json()["id"]
+
+            # # fill the page with blocks(using block id)
+            # blocks = create_blocks(problem_info, submit_info, GPT_comments)
+            # edit_page(page_block_id, blocks)
