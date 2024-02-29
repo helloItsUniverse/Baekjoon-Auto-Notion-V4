@@ -15,8 +15,11 @@ def adjust_datetime_offset():
     return date_string
 
 # refactor page id to let notion API understand
-def refactor_page_id(input_page_id):
+def address_to_id(input_page_id):
     return input_page_id[: 8] + '-' + input_page_id[8 : 12] + '-' + input_page_id[12 : 16] + '-' + input_page_id[16 : 20] + '-' + input_page_id[20 :]
+
+def id_to_address(input_id):
+    return str(input_id).translate({ord('-'): None})
 
 # constructs database properties(json type) to use as payload data for 'post' request
 def json_input(parent_page_id):
@@ -289,11 +292,11 @@ def create_attr_tier(tier_num):
 
 
 # (request.post) create empty page with preset
-def create_page(data, DATABASE_ID):
+def create_page(data: dict, db_id):
     properties = data[0]
     icon = data[1]
     create_url = "https://api.notion.com/v1/pages"
-    payload = {"parent": {"database_id": DATABASE_ID}, "properties": properties, "icon": icon}
+    payload = {"parent": {"database_id": db_id}, "properties": properties, "icon": icon}
     
     res = requests.post(create_url, headers=headers, json=payload)
     if res.status_code == 200:
@@ -428,15 +431,17 @@ def edit_page(page_block_id, data: dict):
 st.set_page_config(layout="wide")
 
 st.title("BOJ-to-Notion Auto Uploader :sunglasses:")
+st.subheader("Automatically upload your Baekjoon-Online-Judge code to your own Notion page")
+st.divider()
 
 col1, col2 = st.columns(2)
 
 with col1:
-    input_parent_page_id = st.text_input(label='# 1. Please input your Parent Page ID', value="")
-    input_database_id = st.text_input(label='# 2. (Auto-generate) Your Database ID', value="")
-    input_openai_key = st.text_input(label='# 3. Please input your OpenAI key', type='password', value="")
-    input_notion_secret = st.text_input(label='# 4. Please input your Notion API Secret Key', type='password', value="")
-    input_code_share_link = st.text_input(label="# 5. BOJ Source Code Share Link", value="")
+    input_parent_page_id = st.text_input(label='# Section 1. Please input your Parent Page ID', value="")
+    input_database_id = st.text_input(label='# Section 2. Please input your Database ID ( :warning: FIRST TIME? LEAVE HERE EMPTY. :warning: )', value="")
+    input_openai_key = st.text_input(label='# Section 3. Please input your OpenAI key', type='password', value="")
+    input_notion_secret = st.text_input(label='# Section 4. Please input your Notion API Secret Key', type='password', value="")
+    input_code_share_link = st.text_input(label="# Section 5. BOJ Source Code Share Link", value="")
     
     btn_clicked = st.button("Submit to Notion")
 
@@ -459,10 +464,10 @@ headers_user_agent = {
 openai.api_key = input_openai_key
 
 with col2:
-
+    con = st.container(border=True)
+    con.caption("Result")
+    
     if btn_clicked:
-        con = st.container()
-        con.caption("Result")
         if not str(input_parent_page_id) \
             or not str(input_openai_key) \
             or not str(input_notion_secret) \
@@ -476,7 +481,7 @@ with col2:
             
             if not str(input_database_id):
                 con.text('database does not exist!')
-                response_database = create_database(json_input(refactor_page_id(input_parent_page_id)), input_notion_secret)
+                response_database = create_database(json_input(address_to_id(input_parent_page_id)), input_notion_secret)
                 response_database_id = response_database.json()['id']
                 
                 submit_info = get_code(input_code_share_link)
@@ -486,6 +491,10 @@ with col2:
                 page_block_id = response_page.json()["id"]
                 blocks = create_blocks(problem_info, submit_info, GPT_comments)
                 edit_page(page_block_id, blocks)
+                
+                con.text(f'[ IMPORTANT ]  \nYour database ID: {id_to_address(response_database_id)}\nIf you want to post page to the same database,\nPlease copy & paste this to Section 2.')
+                
+                
             
             else:
                 con.text('database already exists!  \n')
@@ -493,23 +502,11 @@ with col2:
                 submit_info = get_code(input_code_share_link)
                 problem_info = get_problem(submit_info[0])
                 GPT_comments = code_comments("\n".join(submit_info[2]))
-                response_page = create_page(create_properties(problem_info, submit_info), input_database_id)
+                response_page = create_page(create_properties(problem_info, submit_info), address_to_id(input_database_id))
                 page_block_id = response_page.json()["id"]
+                print(response_page.json()['parent']['database_id'])
                 blocks = create_blocks(problem_info, submit_info, GPT_comments)
                 edit_page(page_block_id, blocks)
-            
-            
-            
-            
-            # # print('\nreading database properties ...')
-            # con.text('reading database properties ...')
-            # # print('\ncreating new page row ...\n')
-            # con.text('creating new page row ...')
-            # response = create_page(create_properties(problem_info, submit_info), input_database_id)
-
-            # # get page block id
-            # page_block_id = response.json()["id"]
-
-            # # fill the page with blocks(using block id)
-            # blocks = create_blocks(problem_info, submit_info, GPT_comments)
-            # edit_page(page_block_id, blocks)
+                
+            response_url = 'https://www.notion.so/' + id_to_address(response_page.json()['parent']['database_id'])
+            con.page_link(response_url, label="Page Link", icon="🌎")
