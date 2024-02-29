@@ -492,7 +492,7 @@ with col2:
                 blocks = create_blocks(problem_info, submit_info, GPT_comments)
                 edit_page(page_block_id, blocks)
                 
-                con.text(f':warning: IMPORTANT :warning:  \nYour database ID: {id_to_address(response_database_id)}\nIf you want to post page to the same database,\nPlease copy & paste this to Section 2.')
+                con.text(f'******* IMPORTANT *******  \nYour database ID: {id_to_address(response_database_id)}\nIf you want to post page to the same database,\nPlease copy & paste this to Section 2.')
                 
                 
             
