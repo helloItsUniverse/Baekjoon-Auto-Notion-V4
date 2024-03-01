@@ -430,7 +430,7 @@ def edit_page(page_block_id, data: dict):
 
 st.set_page_config(layout="wide")
 
-st.title("BOJ-to-Notion Auto Uploader :sunglasses:")
+st.title(":sunglasses: BOJ-to-Notion Auto Uploader :sunglasses:")
 st.subheader("Automatically upload your Baekjoon-Online-Judge code to your own Notion page")
 st.divider()
 
