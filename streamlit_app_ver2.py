@@ -113,20 +113,12 @@ def create_database(data: dict, notion_token):
         con.text(f"{response.status_code}: Error during database creation")
         
     response_database_id = response.json()["id"]
-    # file_path = 'database_id.txt'
-    # try:
-    #     with open(file_path, 'w') as f:
-    #         f.truncate()
-    #         f.write(response_database_id)
-    # except IOError:
-    #     print('\nFile open failure!\n')
     return response
 
 # ======================================================================
 # crawling resources
 def code_comments(param):
     try:
-        # print('\nChatGPT(ver 3.5-turbo) is now generating code comments ...')
         con.text('ChatGPT(ver 3.5-turbo) is now generating code comments ...')
         response = openai.ChatCompletion.create(
             model='gpt-3.5-turbo',
@@ -357,7 +349,6 @@ def create_blocks(problem_info, submit_info, GPT_comments):
                     {
                         'annotations': {'bold': True},
                         'href': None,
-                        # 'plain_text': f"{'Memory   '+submit_info[3][0]:<50}{'Time   '+submit_info[3][1]:^0}{'Code Length   '+submit_info[3][2]:>50}",
                         'plain_text': f'Memory   {submit_info[3][0]}\nTime   {submit_info[3][1]}\nCode Length   {submit_info[3][2]}',
                         'text': 
                             {
@@ -468,17 +459,14 @@ with col2:
     con.caption("Result")
     
     if btn_clicked:
+
         if not str(input_parent_page_id) \
             or not str(input_openai_key) \
             or not str(input_notion_secret) \
             or not str(input_code_share_link):
             con.error("Something is empty. Check your inputs again")
+
         else:
-            # con.write(f"Your Parent Page ID is: {str(input_parent_page_id)}  \n\
-            #     Your OpenAI key is: {str(input_openai_key)}   \n\
-            #     Your Notion Secret Key is: {str(input_notion_secret)}  \n\
-            #     Your BOJ Share Code Link is: {str(input_code_share_link)}  \n")
-            
             if not str(input_database_id):
                 con.text('database does not exist!')
                 response_database = create_database(json_input(address_to_id(input_parent_page_id)), input_notion_secret)
